@@ -295,3 +295,72 @@ body {
 .float-text.wrong {
     color: #f00;
 }
+
+/* Mobile Responsiveness */
+@media (max-width: 600px) {
+    #game-container {
+        width: 100vw;
+        height: calc(100vw * 16 / 9);
+        max-height: 100vh;
+        max-width: calc(100vh * 9 / 16);
+        aspect-ratio: 9 / 16;
+    }
+
+    #header {
+        padding: 10px;
+        height: auto;
+        flex-wrap: wrap;
+    }
+    
+    .target-word {
+        order: -1;
+        width: 100%;
+        margin-bottom: 10px;
+    }
+
+    #target-meaning {
+        font-size: 28px;
+    }
+
+    .score-board, .timer-board {
+        font-size: 14px;
+        padding: 5px 10px;
+    }
+
+    #score, #time {
+        font-size: 18px;
+    }
+
+    #play-area {
+        height: calc(100% - 100px); /* header height varies, adjust space */
+    }
+
+    .nugget {
+        font-size: 24px !important;
+        transform: translate(-50%, -50%) scale(0.75) !important;
+    }
+
+    .rock {
+        transform: translate(-50%, -50%) scale(0.75) !important;
+    }
+
+    .modal {
+        padding: 20px;
+        width: 90%;
+    }
+    
+    .modal h1 {
+        font-size: 24px;
+    }
+    
+    #start-btn {
+        padding: 10px 20px;
+        font-size: 18px;
+    }
+
+    #copyright {
+        font-size: 10px;
+        bottom: 5px;
+        right: 10px;
+    }
+}
