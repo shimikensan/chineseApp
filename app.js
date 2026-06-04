@@ -26,6 +26,7 @@ const clawArm = document.getElementById('claw-arm');
 // Overlays and Modals
 const overlay = document.getElementById('overlay');
 const startBtn = document.getElementById('start-btn');
+const overlayLogoutBtn = document.getElementById('overlay-logout-btn');
 const modalTitle = document.getElementById('modal-title');
 const modalDesc = document.getElementById('modal-desc');
 
@@ -72,6 +73,7 @@ function init() {
     loginBtn.addEventListener('click', handleLogin);
     registerBtn.addEventListener('click', handleRegister);
     logoutBtn.addEventListener('click', handleLogout);
+    if(overlayLogoutBtn) overlayLogoutBtn.addEventListener('click', handleLogout);
     
     // Leaderboard events
     leaderboardBtn.addEventListener('click', showLeaderboard);
