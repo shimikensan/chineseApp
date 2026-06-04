@@ -1,3 +1,11 @@
+import { auth, db } from './firebase-config.js';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { collection, getDocs, query, orderBy, limit, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { vocabList } from './data.js';
+
+// Auth State
+let currentUser = null;
+
 // Game variables
 let score = 0;
 let timeLeft = 60;
@@ -14,10 +22,28 @@ const pinyinEl = document.getElementById('target-pinyin');
 const groundEl = document.getElementById('ground');
 const playArea = document.getElementById('play-area');
 const clawArm = document.getElementById('claw-arm');
+
+// Overlays and Modals
 const overlay = document.getElementById('overlay');
 const startBtn = document.getElementById('start-btn');
 const modalTitle = document.getElementById('modal-title');
 const modalDesc = document.getElementById('modal-desc');
+
+const authOverlay = document.getElementById('auth-overlay');
+const emailInput = document.getElementById('email-input');
+const passwordInput = document.getElementById('password-input');
+const loginBtn = document.getElementById('login-btn');
+const registerBtn = document.getElementById('register-btn');
+const authError = document.getElementById('auth-error');
+
+const userInfo = document.getElementById('user-info');
+const userName = document.getElementById('user-name');
+const logoutBtn = document.getElementById('logout-btn');
+
+const leaderboardBtn = document.getElementById('leaderboard-btn');
+const leaderboardOverlay = document.getElementById('leaderboard-overlay');
+const leaderboardList = document.getElementById('leaderboard-list');
+const closeLeaderboardBtn = document.getElementById('close-leaderboard-btn');
 
 // Claw parameters
 const CLAW_STATE = { SWINGING: 0, DROPPING: 1, RETRACTING: 2 };
@@ -42,11 +68,134 @@ function init() {
     playArea.addEventListener('mousedown', attemptDrop);
     playArea.addEventListener('touchstart', (e) => { e.preventDefault(); attemptDrop(); }, {passive: false});
     
+    // Auth events
+    loginBtn.addEventListener('click', handleLogin);
+    registerBtn.addEventListener('click', handleRegister);
+    logoutBtn.addEventListener('click', handleLogout);
+    
+    // Leaderboard events
+    leaderboardBtn.addEventListener('click', showLeaderboard);
+    closeLeaderboardBtn.addEventListener('click', () => {
+        leaderboardOverlay.classList.add('hidden');
+    });
+    
+    // Listen to Auth State
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            currentUser = user;
+            authOverlay.classList.add('hidden');
+            overlay.classList.remove('hidden');
+            userInfo.classList.remove('hidden');
+            userName.innerText = user.email.split('@')[0]; // Simple display name
+        } else {
+            currentUser = null;
+            authOverlay.classList.remove('hidden');
+            overlay.classList.add('hidden');
+            userInfo.classList.add('hidden');
+            if (isPlaying) endGame();
+        }
+    });
+
     // Initial draw
     updateClawTransform();
 }
 
+// --- Firebase Auth ---
+async function handleLogin() {
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    if(!email || !password) return showAuthError("Vui lòng nhập đủ email và mật khẩu.");
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        authError.innerText = "";
+    } catch (error) {
+        showAuthError("Đăng nhập thất bại: " + error.message);
+    }
+}
+
+async function handleRegister() {
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    if(!email || !password) return showAuthError("Vui lòng nhập đủ email và mật khẩu.");
+    try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        authError.innerText = "";
+    } catch (error) {
+        showAuthError("Đăng ký thất bại: " + error.message);
+    }
+}
+
+async function handleLogout() {
+    try {
+        await signOut(auth);
+    } catch (error) {
+        console.error("Lỗi đăng xuất", error);
+    }
+}
+
+function showAuthError(msg) {
+    authError.innerText = msg;
+}
+
+// --- Firebase Firestore ---
+async function saveScore(finalScore) {
+    if (!currentUser) return;
+    try {
+        const userRef = doc(db, "users", currentUser.uid);
+        const docSnap = await getDoc(userRef);
+        
+        let shouldSave = true;
+        if (docSnap.exists()) {
+            const currentHigh = docSnap.data().highScore || 0;
+            if (finalScore <= currentHigh) shouldSave = false;
+        }
+
+        if (shouldSave) {
+            await setDoc(userRef, {
+                email: currentUser.email,
+                name: currentUser.email.split('@')[0],
+                highScore: finalScore,
+                lastUpdated: new Date()
+            }, { merge: true });
+            console.log("Đã lưu điểm cao mới!");
+        }
+    } catch (e) {
+        console.error("Lỗi khi lưu điểm: ", e);
+    }
+}
+
+async function showLeaderboard() {
+    leaderboardOverlay.classList.remove('hidden');
+    leaderboardList.innerHTML = '<li>Đang tải...</li>';
+    try {
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, orderBy("highScore", "desc"), limit(10));
+        const querySnapshot = await getDocs(q);
+        
+        leaderboardList.innerHTML = '';
+        if (querySnapshot.empty) {
+            leaderboardList.innerHTML = '<li>Chưa có ai ghi điểm.</li>';
+            return;
+        }
+
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            const li = document.createElement('li');
+            li.innerHTML = `<span class="lb-name">${data.name}</span> <span class="lb-score">${data.highScore}</span>`;
+            leaderboardList.appendChild(li);
+        });
+    } catch (e) {
+        console.error("Lỗi khi tải BXH: ", e);
+        leaderboardList.innerHTML = '<li>Lỗi tải dữ liệu.</li>';
+    }
+}
+
+// --- Game Logic ---
 function startGame() {
+    if(!currentUser) {
+        alert("Vui lòng đăng nhập để chơi!");
+        return;
+    }
     score = 0;
     timeLeft = 60;
     scoreEl.innerText = score;
@@ -82,16 +231,19 @@ function endGame() {
     modalDesc.innerText = `Điểm của bạn: ${score}\nBạn đã làm rất tốt!`;
     startBtn.innerText = "Chơi Lại";
     overlay.classList.remove('hidden');
+    
+    if (score > 0) {
+        saveScore(score);
+    }
 }
 
 function generateLevel() {
     groundEl.innerHTML = '';
     nuggetsData = [];
     
-    // Pick 5-7 random vocab words for this level
     const numNuggets = Math.floor(Math.random() * 3) + 5;
     let selectedVocabs = [];
-    let tempVocabList = [...vocabList]; // from data.js
+    let tempVocabList = [...vocabList];
     
     for (let i = 0; i < numNuggets; i++) {
         if (tempVocabList.length === 0) break;
@@ -100,24 +252,19 @@ function generateLevel() {
         tempVocabList.splice(idx, 1);
     }
     
-    // Set target word
     const targetIdx = Math.floor(Math.random() * selectedVocabs.length);
     currentTarget = selectedVocabs[targetIdx];
     meaningEl.innerText = currentTarget.meaning;
     pinyinEl.innerText = currentTarget.pinyin;
     
-    // Create nuggets DOM elements
+    const rect = playArea.getBoundingClientRect();
+    const minY = rect.height * 0.35; 
+    const maxY = rect.height - 80;
+    const minX = 60;
+    const maxX = rect.width - 60;
+    
     selectedVocabs.forEach((vocab) => {
-        // Random position, keep away from edges and top sky area
-        const rect = playArea.getBoundingClientRect();
-        // ground is approx bottom 70%, sky is top 30%
-        // but claw starts at top, so minY should be below sky
-        const minY = rect.height * 0.35; 
-        const maxY = rect.height - 80;
-        const minX = 60;
-        const maxX = rect.width - 60;
-        
-        const size = Math.random() * 30 + 70; // 70-100px
+        const size = Math.random() * 30 + 70;
         const x = minX + Math.random() * (maxX - minX);
         const y = minY + Math.random() * (maxY - minY);
         
@@ -125,7 +272,7 @@ function generateLevel() {
         el.className = 'nugget';
         el.innerText = vocab.chars;
         el.style.width = size + 'px';
-        el.style.height = (size * 0.8) + 'px'; // slightly oval
+        el.style.height = (size * 0.8) + 'px';
         el.style.left = x + 'px';
         el.style.top = y + 'px';
         
@@ -137,21 +284,14 @@ function generateLevel() {
             vocab: vocab,
             x: x,
             y: y,
-            radius: size / 2, // approximation for collision
+            radius: size / 2,
             grabbed: false
         });
     });
     
-    // Create rocks DOM elements
-    const numRocks = Math.floor(Math.random() * 3) + 2; // 2-4 rocks
+    const numRocks = Math.floor(Math.random() * 3) + 2;
     for(let i = 0; i < numRocks; i++) {
-        const rect = playArea.getBoundingClientRect();
-        const minY = rect.height * 0.35; 
-        const maxY = rect.height - 80;
-        const minX = 60;
-        const maxX = rect.width - 60;
-        
-        const size = Math.random() * 40 + 60; // 60-100px
+        const size = Math.random() * 40 + 60;
         const x = minX + Math.random() * (maxX - minX);
         const y = minY + Math.random() * (maxY - minY);
         
@@ -186,18 +326,14 @@ function updateClawTransform() {
     clawArm.style.transform = `rotate(${clawAngle}deg)`;
     clawArm.style.height = `${clawLength}px`;
     
-    // Calculate hook world position relative to playArea
     const playRect = playArea.getBoundingClientRect();
     const baseRect = document.getElementById('claw-base').getBoundingClientRect();
     
-    // Base center point
     const baseX = baseRect.left + baseRect.width / 2 - playRect.left;
-    const baseY = baseRect.top + 10 - playRect.top; // 10px is claw-arm top
+    const baseY = baseRect.top + 15 - playRect.top;
     
-    // Angle in radians
     const rad = clawAngle * Math.PI / 180;
     
-    // Hook end point
     hookX = baseX - Math.sin(rad) * clawLength;
     hookY = baseY + Math.cos(rad) * clawLength;
 }
@@ -207,12 +343,11 @@ function checkCollision() {
         let n = nuggetsData[i];
         if (n.grabbed) continue;
         
-        // Simple distance check
         const dx = hookX - n.x;
         const dy = hookY - n.y;
         const dist = Math.sqrt(dx*dx + dy*dy);
         
-        if (dist < n.radius + 15) { // 15 is approx hook radius
+        if (dist < n.radius + 15) {
             return n;
         }
     }
@@ -247,13 +382,11 @@ function gameLoop() {
     else if (clawState === CLAW_STATE.DROPPING) {
         clawLength += dropSpeed;
         
-        // Check out of bounds
         const playRect = playArea.getBoundingClientRect();
         if (hookX < 0 || hookX > playRect.width || hookY > playRect.height || clawLength > MAX_LENGTH) {
             clawState = CLAW_STATE.RETRACTING;
             grabTarget = null;
         } else {
-            // Check collision
             let hit = checkCollision();
             if (hit) {
                 clawState = CLAW_STATE.RETRACTING;
@@ -261,14 +394,12 @@ function gameLoop() {
                 hit.grabbed = true;
                 hit.el.classList.add('grabbed');
                 
-                // Adjust retract speed based on whether it's right or wrong
-                // Optional: make wrong answers heavier
                 if (hit.type === 'rock') {
-                    retractSpeed = 2; // Very slow
+                    retractSpeed = 2;
                 } else if (hit.vocab.id === currentTarget.id) {
                     retractSpeed = 6;
                 } else {
-                    retractSpeed = 3; // heavier, slower
+                    retractSpeed = 3;
                 }
             }
         }
@@ -277,7 +408,6 @@ function gameLoop() {
         clawLength -= retractSpeed;
         
         if (grabTarget) {
-            // Move nugget with hook
             grabTarget.el.style.left = hookX + 'px';
             grabTarget.el.style.top = hookY + 'px';
         }
@@ -286,35 +416,29 @@ function gameLoop() {
             clawLength = INITIAL_LENGTH;
             clawState = CLAW_STATE.SWINGING;
             
-            // Process grabbed item
             if (grabTarget) {
-                grabTarget.el.remove(); // remove from DOM
+                grabTarget.el.remove();
                 
                 const baseX = playArea.getBoundingClientRect().width / 2;
                 const baseY = 50;
 
                 if (grabTarget.type === 'rock') {
-                    // Rock
-                    timeLeft -= 10; // bigger penalty for rock
+                    timeLeft -= 10;
                     if(timeLeft < 0) timeLeft = 0;
                     timeEl.innerText = timeLeft;
                     showFloatingText("ĐÁ! -10s", false, baseX, baseY);
                 } else if (grabTarget.vocab.id === currentTarget.id) {
-                    // Correct
                     score += 100;
                     scoreEl.innerText = score;
                     showFloatingText("+100", true, baseX, baseY);
-                    // generate next level
                     setTimeout(generateLevel, 500);
                 } else {
-                    // Wrong
-                    timeLeft -= 5; // penalty
+                    timeLeft -= 5;
                     if(timeLeft < 0) timeLeft = 0;
                     timeEl.innerText = timeLeft;
                     showFloatingText("SAI! -5s", false, baseX, baseY);
                 }
                 
-                // Remove from array
                 nuggetsData = nuggetsData.filter(n => n !== grabTarget);
                 grabTarget = null;
             }

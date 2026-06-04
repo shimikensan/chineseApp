@@ -1,4 +1,4 @@
-const vocabList = [
+export const vocabList = [
     { id: 1, pinyin: "nǐ hǎo", meaning: "Xin chào", chars: "你好" },
     { id: 2, pinyin: "xiè xie", meaning: "Cảm ơn", chars: "谢谢" },
     { id: 3, pinyin: "zài jiàn", meaning: "Tạm biệt", chars: "再见" },
