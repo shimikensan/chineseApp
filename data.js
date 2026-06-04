@@ -1,0 +1,17 @@
+const vocabList = [
+    { id: 1, pinyin: "nǐ hǎo", meaning: "Xin chào", chars: "你好" },
+    { id: 2, pinyin: "xiè xie", meaning: "Cảm ơn", chars: "谢谢" },
+    { id: 3, pinyin: "zài jiàn", meaning: "Tạm biệt", chars: "再见" },
+    { id: 4, pinyin: "duì bu qǐ", meaning: "Xin lỗi", chars: "对不起" },
+    { id: 5, pinyin: "méi guān xi", meaning: "Không có gì", chars: "没关系" },
+    { id: 6, pinyin: "yī", meaning: "Số 1", chars: "一" },
+    { id: 7, pinyin: "èr", meaning: "Số 2", chars: "二" },
+    { id: 8, pinyin: "sān", meaning: "Số 3", chars: "三" },
+    { id: 9, pinyin: "rén", meaning: "Người", chars: "人" },
+    { id: 10, pinyin: "chī", meaning: "Ăn", chars: "吃" },
+    { id: 11, pinyin: "hē", meaning: "Uống", chars: "喝" },
+    { id: 12, pinyin: "shuǐ", meaning: "Nước", chars: "水" },
+    { id: 13, pinyin: "hǎo", meaning: "Tốt", chars: "好" },
+    { id: 14, pinyin: "bù", meaning: "Không", chars: "不" },
+    { id: 15, pinyin: "wǒ", meaning: "Tôi", chars: "我" },
+];

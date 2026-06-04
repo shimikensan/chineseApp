@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Học Tiếng Trung - Đào Vàng</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Header: Score and Target Word -->
+        <header id="header">
+            <div class="score-board">
+                Điểm: <span id="score">0</span>
+            </div>
+            <div class="target-word">
+                <div id="target-meaning">Đang tải...</div>
+                <div id="target-pinyin"></div>
+            </div>
+            <div class="timer-board">
+                Thời gian: <span id="time">60</span>s
+            </div>
+        </header>
+
+        <!-- Main Game Area -->
+        <main id="play-area">
+            <!-- The Claw Base -->
+            <div id="claw-base">
+                <!-- The string and hook -->
+                <div id="claw-arm">
+                    <div id="rope"></div>
+                    <div id="hook"></div>
+                </div>
+            </div>
+
+            <!-- Ground/Dirt Area -->
+            <div id="ground"></div>
+            
+            <div id="copyright">Diệu Ngọc @copyright</div>
+        </main>
+        
+        <!-- Game Over / Start Screen -->
+        <div id="overlay">
+            <div class="modal">
+                <h1 id="modal-title">ĐÀO VÀNG TIẾNG TRUNG</h1>
+                <p id="modal-desc">Kéo các chữ Hán đúng với từ hiển thị phía trên để ghi điểm!</p>
+                <button id="start-btn">Bắt Đầu Chơi</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
